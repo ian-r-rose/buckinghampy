@@ -1,9 +1,21 @@
-from fractions import Fraction
-import numpy as np
-from scipy.linalg import svd
-from numpy.linalg import norm
-import scipy.optimize as opt
+from __future__ import division
+from __future__ import print_function
 
+# Symbolic math probably works better for this 
+# problem, and the matrix operations are never 
+# going to be so large that it makes a difference
+use_symbolic_math = True
+try:
+    import sympy
+# Otherwise, try the numerical implementation
+except ImportError:
+    import numpy as np
+    from scipy.linalg import svd
+    from numpy.linalg import norm
+    import scipy.optimize as opt
+    use_symbolic_math = False
+
+from fractions import Fraction
 
 
 def construct_dimension_matrix( parameters ):
@@ -23,7 +35,10 @@ def construct_dimension_matrix( parameters ):
     units.sort()
 
     # Allocate the space for the dimension matrix
-    dimension_matrix = np.asmatrix( np.empty(shape=(len(units), len(parameters))))
+    if use_symbolic_math:
+        dimension_matrix = sympy.zeros( len(units), len(parameters) )
+    else:
+        dimension_matrix = np.asmatrix( np.empty(shape=(len(units), len(parameters))))
     
     # now fill the dimension matrix
     for i,u in enumerate(units):
@@ -119,6 +134,33 @@ def rationalize_basis( basis ):
 
     return rational_basis
 
+def integrify_basis( basis ):
+    def _gcd(a, b):
+	"""Return greatest common divisor using Euclid's Algorithm."""
+	while b:
+	    a, b = b, a % b
+	return a
+
+    def _lcm(a, b):
+	"""Return lowest common multiple."""
+	return a * b // _gcd(a, b)
+
+    def _lcmm(*args):
+	"""Return lcm of args."""   
+	return reduce(_lcm, args)
+
+    #This is intended for lists of type sympy.Rational
+    assert( use_symbolic_math )
+
+    new_basis = []
+    for vec in basis:
+        denominators = [sympy.fraction(e)[1] for e in vec]
+        least_common_multiple = _lcmm( *denominators )
+        new_vec = [ Fraction( int(e*least_common_multiple), 1 ) for e in vec]
+        new_basis.append(new_vec)
+    return new_basis
+
+
 def parse_nondimensional_number( parameters, nondim ):
     numerator_values = ''
     denominator_values = ''
@@ -152,12 +194,19 @@ def parse_nondimensional_number( parameters, nondim ):
 
 def find_nondimensional_numbers( parameters ):
     units, dimension_matrix = construct_dimension_matrix( parameters ) 
-    nullspace = calculate_dimensional_nullspace( dimension_matrix )
-    sparser_nullspace = sparsify_basis(nullspace)
-    rational_nullspace = rationalize_basis( sparser_nullspace)
+
+    if use_symbolic_math:
+        nullspace = dimension_matrix.nullspace()
+        integrified_nullspace = integrify_basis( nullspace )
+        nondimensional_basis = integrified_nullspace
+    else:
+        nullspace = calculate_dimensional_nullspace( dimension_matrix )
+        sparse_nullspace = sparsify_basis(nullspace)
+        rational_nullspace = rationalize_basis(sparse_nullspace)
+        nondimensional_basis = rational_nullspace
 
     nondimensional_numbers = []
-    for nondim in rational_nullspace:
+    for nondim in nondimensional_basis:
         nondimensional_numbers.append( parse_nondimensional_number( parameters, nondim ) )
     return nondimensional_numbers
 
