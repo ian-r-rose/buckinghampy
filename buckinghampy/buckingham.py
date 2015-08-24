@@ -17,8 +17,12 @@ except ImportError:
 
 from fractions import Fraction
 
-
-def construct_dimension_matrix( parameters ):
+def _construct_dimension_matrix( parameters ):
+    """
+    Given a list of parameters, construct a dimensional matrix.
+    The matrix is n_units by n_parameters, and the entries correspond
+    to the exponent of a particular unit in a particular parameter
+    """
 
     # create a set containing all the fundamental units
     # of the problems
@@ -49,7 +53,11 @@ def construct_dimension_matrix( parameters ):
     return units, dimension_matrix
 
 
-def calculate_dimensional_nullspace(dimensional_matrix):
+def _calculate_dimensional_nullspace(dimensional_matrix):
+    """
+    Given a dimensional matrix, calculate the nullspace
+    and return that. This is for use without symbolic math
+    """
     eps = 1.e-4
  
     U, S, Vh = svd( dimensional_matrix )
@@ -63,7 +71,7 @@ def calculate_dimensional_nullspace(dimensional_matrix):
     null_space = np.transpose(null_space)
     return null_space
 
-def sparsify_basis ( basis ):
+def _sparsify_basis ( basis ):
     """
     Parameters
     ----------
@@ -118,7 +126,12 @@ def sparsify_basis ( basis ):
     new_basis[ np.abs(new_basis) < eps ] = 0.
     return new_basis
 
-def rationalize_basis( basis ):
+def _rationalize_basis( basis ):
+    """
+    Given a basis with floating point numbers, attempt to convert them
+    to rational numbers with low-value denominators.  Not particularly
+    reliable, so doing this with symbolic math is preferable.
+    """
     n_cols = basis.shape[1]
 
     rational_basis = []
@@ -134,7 +147,13 @@ def rationalize_basis( basis ):
 
     return rational_basis
 
-def integrify_basis( basis ):
+def _integrify_basis( basis ):
+    """
+    Take a vector basis with sympy.Rational in the entries,
+    and scale them so they are all integers by finding the least
+    common multiple of the denominators and multiplying by that.
+    """
+
     def _gcd(a, b):
 	"""Return greatest common divisor using Euclid's Algorithm."""
 	while b:
@@ -154,59 +173,98 @@ def integrify_basis( basis ):
 
     new_basis = []
     for vec in basis:
+        #Make a list of the denominators
         denominators = [sympy.fraction(e)[1] for e in vec]
+        #Find the least common multiple
         least_common_multiple = _lcmm( *denominators )
+        #Multiply all the entries by that, make it a python Fraction object
         new_vec = [ Fraction( int(e*least_common_multiple), 1 ) for e in vec]
         new_basis.append(new_vec)
+
     return new_basis
 
 
-def parse_nondimensional_number( parameters, nondim ):
+def _parse_nondimensional_number( parameters, nondim ):
+    """
+    Turn a nondimensional number vector (which was the output of
+    some nullspace calculation) and parse it into a LaTeX string.
+    """
+
     numerator_values = ''
     denominator_values = ''
-    
 
     for p,n in zip(parameters,nondim):
         if n == 0:
-            continue
+            continue #Do nothing if the parameter is not present in this number
 
+        #If the exponent is one, we do not need to write it
         if n == 1 or n == -1:
             parsed_parameter = p.symbol
+        #If the exponent is a whole number, we do not need to represent it as a fraction
         elif n.denominator == 1 or n.denominator == -1:
             parsed_parameter = p.symbol + '^{%i}'%(abs(n.numerator))
+        #Otherwise, represent it as a fraction
         else:
             parsed_parameter = p.symbol + '^{%i/%i}'%(abs(n.numerator), abs(n.denominator))
         
-        if n > 0:
+        if n > 0: # The exponent is positive, put it in the numerator
             numerator_values = ' '.join( [numerator_values, parsed_parameter] )
-        elif n < 0:
+        elif n < 0: #The exponent is negative, put it in the denominator
             denominator_values = ' '.join( [denominator_values,parsed_parameter])
 
-
+    #If nothing is in the numerator, make it a one
     if numerator_values == '':
         parsed_number = '\\frac{1}{'+denominator_values+'}'
+    #If nothing is in the denominator, no need to make it a fraction
     elif denominator_values == '':
         parsed_number = numerator_values
+    #Otherwise, make a fraction of the numerator and denominator
     else:
         parsed_number = '\\frac{' + numerator_values + '}{'+denominator_values+'}'
 
     return parsed_number
 
 def find_nondimensional_numbers( parameters ):
-    units, dimension_matrix = construct_dimension_matrix( parameters ) 
+    """
+    Given a list with entries of type buckinghampy.Parameter,
+    find the set of nondimensional numbers which characterize that
+    set.
 
+    Parameters
+    ----------
+    parameters : list of buckinghampy.Parameter objects
+
+    Returns
+    -------
+    nondimensional_numbers : a list of LaTeX ready strings
+        which are a valid (but not necessarily unique)
+        nondimensionalization of the problem
+    """
+
+    # Construct the matrix of dimensions
+    units, dimension_matrix = _construct_dimension_matrix( parameters )
+
+    # Sympy works better for this problem than doing it numerically,
+    # so we prefer this (use_symbolic_math is true if we successfully
+    # imported sympy)
     if use_symbolic_math:
+        # Get the nullspace
         nullspace = dimension_matrix.nullspace()
-        integrified_nullspace = integrify_basis( nullspace )
-        nondimensional_basis = integrified_nullspace
+        #Make all of the entries of the nullspace integers
+        integrified_nullspace = _integrify_basis( nullspace )
+        nondimensional_basis = integrified_nullspace #Rename
     else:
-        nullspace = calculate_dimensional_nullspace( dimension_matrix )
-        sparse_nullspace = sparsify_basis(nullspace)
-        rational_nullspace = rationalize_basis(sparse_nullspace)
-        nondimensional_basis = rational_nullspace
+        # Get the nullspace
+        nullspace = _calculate_dimensional_nullspace( dimension_matrix )
+        # Make an attempt at making the nullspace sparser
+        sparse_nullspace = _sparsify_basis(nullspace)
+        #Make an attempt at turning the result into rational numbers
+        rational_nullspace = _rationalize_basis(sparse_nullspace)
+        nondimensional_basis = rational_nullspace # Rename
 
+    # Parse the basis vectors of the nullspace into LaTeX strings
     nondimensional_numbers = []
     for nondim in nondimensional_basis:
-        nondimensional_numbers.append( parse_nondimensional_number( parameters, nondim ) )
-    return nondimensional_numbers
+        nondimensional_numbers.append( _parse_nondimensional_number( parameters, nondim ) )
 
+    return nondimensional_numbers
