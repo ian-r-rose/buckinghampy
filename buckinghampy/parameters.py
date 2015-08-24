@@ -11,6 +11,8 @@ density = Parameter(u'\\rho', {'kg' :  1,\
 
 length = Parameter('L', {'m' : 1} )
 
+head = Parameter('h', {'m' : 1} )
+
 viscosity = Parameter( '\\eta', {'kg' :  1,\
                                  'm'  : -1,\
                                  's'  : -1} )
@@ -23,6 +25,11 @@ thermal_conductivity = Parameter( 'k', {'kg' :  1,\
                                         'm'  :  1,\
                                         's'  : -3,\
                                         'K'  : -1} )
+
+hydraulic_permeability = Parameter( '\\kappa', {'m' : 2})
+
+hydraulic_conductivity = Parameter( 'K', { 'm' :  1,\
+                                           's' : -1 } )
 
 thermal_diffusivity = Parameter  ( '\\kappa', {'m' :  2 ,\
                                                's' : -1})
