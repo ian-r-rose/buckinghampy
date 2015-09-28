@@ -17,6 +17,9 @@ viscosity = Parameter( '\\eta', {'kg' :  1,\
                                  'm'  : -1,\
                                  's'  : -1} )
 
+kinematic_viscosity = Parameter( '\\nu', {'m' :  2,\
+                                          's' : -1} )
+
 temperature = Parameter( 'T', {'K' : 1} )
 
 thermal_expansivity = Parameter( '\\alpha', {'K' : -1 } )
@@ -83,3 +86,34 @@ boltzmann = Parameter('k_{B}',  {'m'  :  2,\
                                  'K'  : -1,\
                                  's'  : -2} )
 
+current = Parameter('I', {'A' : 1} )
+
+charge = Parameter('q', {'A' :  1,\
+                         's' : -1} )
+
+charge_density = Parameter('\\rho', {'A' :  1,\
+                                     's' : -1,\
+                                     'm' : -3} )
+
+electrical_conductivity = Parameter('\\sigma', {'kg' : -1,\
+                                                'm'  : -3,\
+                                                's'  :  3,\
+                                                'A'  :  2} )
+
+electrical_resistivity = Parameter('\\sigma', {'kg' :   1,\
+                                                'm'  :  3,\
+                                                's'  : -3,\
+                                                'A'  : -2} )
+
+voltage = Parameter('V', {'kg' :  1,\
+                          'm'  :  2,\
+                          's'  : -3,\
+                          'A'  : -1} )
+
+magnetic_permeability = Parameter('\\mu', {'kg' :  1,\
+                                           'm'  :  1,\
+                                           's'  : -2,\
+                                           'A'  : -2} )
+
+magnetic_diffusivity = Parameter('\\eta_m', {'m' :  2,\
+                                             's' : -1,} )
