@@ -17,6 +17,10 @@ except ImportError:
 
 from fractions import Fraction
 
+# Local imports
+from .nondimensional import NondimensionalNumber, NondimensionalNumberList
+from .parameters import Parameter
+
 def _construct_dimension_matrix( parameters ):
     """
     Given a list of parameters, construct a dimensional matrix.
@@ -47,7 +51,7 @@ def _construct_dimension_matrix( parameters ):
     # now fill the dimension matrix
     for i,u in enumerate(units):
         for j,p in enumerate(parameters):
-            entry = p.units[u] if u in p.units else 0. 
+            entry = p.units[u] if u in p.units else 0
             dimension_matrix[i,j] = entry
 
     return units, dimension_matrix
@@ -184,46 +188,6 @@ def _integrify_basis( basis ):
     return new_basis
 
 
-def _parse_nondimensional_number( parameters, nondim ):
-    """
-    Turn a nondimensional number vector (which was the output of
-    some nullspace calculation) and parse it into a LaTeX string.
-    """
-
-    numerator_values = ''
-    denominator_values = ''
-
-    for p,n in zip(parameters,nondim):
-        if n == 0:
-            continue #Do nothing if the parameter is not present in this number
-
-        #If the exponent is one, we do not need to write it
-        if n == 1 or n == -1:
-            parsed_parameter = p.symbol
-        #If the exponent is a whole number, we do not need to represent it as a fraction
-        elif n.denominator == 1 or n.denominator == -1:
-            parsed_parameter = p.symbol + '^{%i}'%(abs(n.numerator))
-        #Otherwise, represent it as a fraction
-        else:
-            parsed_parameter = p.symbol + '^{%i/%i}'%(abs(n.numerator), abs(n.denominator))
-        
-        if n > 0: # The exponent is positive, put it in the numerator
-            numerator_values = ' '.join( [numerator_values, parsed_parameter] )
-        elif n < 0: #The exponent is negative, put it in the denominator
-            denominator_values = ' '.join( [denominator_values,parsed_parameter])
-
-    #If nothing is in the numerator, make it a one
-    if numerator_values == '':
-        parsed_number = '\\frac{1}{'+denominator_values+'}'
-    #If nothing is in the denominator, no need to make it a fraction
-    elif denominator_values == '':
-        parsed_number = numerator_values
-    #Otherwise, make a fraction of the numerator and denominator
-    else:
-        parsed_number = '\\frac{' + numerator_values + '}{'+denominator_values+'}'
-
-    return parsed_number
-
 def find_nondimensional_numbers( parameters ):
     """
     Given a list with entries of type buckinghampy.Parameter,
@@ -263,8 +227,8 @@ def find_nondimensional_numbers( parameters ):
         nondimensional_basis = rational_nullspace # Rename
 
     # Parse the basis vectors of the nullspace into LaTeX strings
-    nondimensional_numbers = []
-    for nondim in nondimensional_basis:
-        nondimensional_numbers.append( _parse_nondimensional_number( parameters, nondim ) )
+    nondimensional_numbers = NondimensionalNumberList(\
+                             [ NondimensionalNumber(parameters, n) \
+                               for n in nondimensional_basis] )
 
     return nondimensional_numbers
