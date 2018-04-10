@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import buckinghampy
 from buckinghampy.parameters import *
 
@@ -10,4 +12,4 @@ parameters = [ length, magnetic_permeability, kinematic_viscosity, velocity, len
 
 nondimensional_numbers = buckinghampy.find_nondimensional_numbers( parameters ) 
 for n in nondimensional_numbers:
-    print n
+    print(n)

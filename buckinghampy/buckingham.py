@@ -1,21 +1,10 @@
 from __future__ import division
 from __future__ import print_function
 
-# Symbolic math probably works better for this 
-# problem, and the matrix operations are never 
-# going to be so large that it makes a difference
-use_symbolic_math = True
-try:
-    import sympy
-# Otherwise, try the numerical implementation
-except ImportError:
-    import numpy as np
-    from scipy.linalg import svd
-    from numpy.linalg import norm
-    import scipy.optimize as opt
-    use_symbolic_math = False
-
 from fractions import Fraction
+from functools import reduce
+
+import sympy
 
 # Local imports
 from .nondimensional import NondimensionalNumber, NondimensionalNumberList
@@ -43,10 +32,7 @@ def _construct_dimension_matrix( parameters ):
     units.sort()
 
     # Allocate the space for the dimension matrix
-    if use_symbolic_math:
-        dimension_matrix = sympy.zeros( len(units), len(parameters) )
-    else:
-        dimension_matrix = np.asmatrix( np.empty(shape=(len(units), len(parameters))))
+    dimension_matrix = sympy.zeros( len(units), len(parameters) )
     
     # now fill the dimension matrix
     for i,u in enumerate(units):
@@ -57,100 +43,6 @@ def _construct_dimension_matrix( parameters ):
     return units, dimension_matrix
 
 
-def _calculate_dimensional_nullspace(dimensional_matrix):
-    """
-    Given a dimensional matrix, calculate the nullspace
-    and return that. This is for use without symbolic math
-    """
-    eps = 1.e-4
- 
-    U, S, Vh = svd( dimensional_matrix )
-
-    # The columns of V that correspond to small singular values
-    # (or do not exist) are the left nullspace for the matrix.
-    # select them, appropriately transpose them, and return them
-    null_mask = ( np.append(S, np.zeros(len(Vh)-len(S))) <= eps)
-    null_space = np.compress(null_mask, Vh, axis=0)
-
-    null_space = np.transpose(null_space)
-    return null_space
-
-def _sparsify_basis ( basis ):
-    """
-    Parameters
-    ----------
-    basis: numpy array
-        A 2D array correspnding to the basis, 
-        with the columns corresponding to basis vectors.
-   
-    Returns
-    -------
-    new_basis: numpy array
-        A 2D array correspnding to the attempt at a sparser basis, 
-        with the columns corresponding to basis vectors.
-    """
-   
-    eps = 1.e-4
-    new_basis = basis.copy()
-    n_cols = new_basis.shape[1]
-    n_rows = new_basis.shape[0]
-
-    # Okay, this is kind of ugly.  The idea is that we want to make a new basis by
-    # making linear combinations of the old basis vectors, while attempting to 
-    # minimize the L1 norm of the new basis vectors.  So we loop over each basis
-    # vector and try to make a new one of all the vectors AFTER it in the list.
-    # After this minimization is complete, we project that (now sparse) vector
-    # out of the rest of them in a standard Gram-Schmidt way, and move on to the
-    # next vector.  After all are done, we return the new basis.  
-
-    #lambda function for computing L1 norm of a vector
-    l1 = lambda x : np.sum( np.abs (x) )
- 
-    # Add a linear combination of all but the first column of B into
-    # the first column of B, according to x
-    combine = lambda B, x: np.dot( B, np.append( np.array([1.0,]), x) )
-    
-    #Loop over all the columns
-    for i in range( n_cols ):
-
-        #Find a linear combination of all the columns after the ith one that minimizes
-        # the L1 norm of the ith column
-        sp = opt.fmin( lambda x : l1(combine( new_basis[:, i:n_cols], x )), np.ones(n_cols-i-1), disp=0, xtol = eps)
-        new_basis[:,i] = np.reshape(combine( new_basis[:, i:n_cols], sp), (n_rows,))
-        new_basis[:,i] = new_basis[:,i]/norm(new_basis[:,i])
-
-        #Now project that column out of all the others.
-        for j in range (i+1, n_cols):
-            new_basis[:,j] = new_basis[:,j] - np.dot(new_basis[:,i], new_basis[:,j])*new_basis[:,i]
-            new_basis[:,j] = new_basis[:,j]/norm(new_basis[:,j])
-
-
-    #Finally, there should now be a lot of near-zero entries in the new basis.
-    #Explicitly zero them out.
-    new_basis[ np.abs(new_basis) < eps ] = 0.
-    return new_basis
-
-def _rationalize_basis( basis ):
-    """
-    Given a basis with floating point numbers, attempt to convert them
-    to rational numbers with low-value denominators.  Not particularly
-    reliable, so doing this with symbolic math is preferable.
-    """
-    n_cols = basis.shape[1]
-
-    rational_basis = []
-
-    for i in range(n_cols):
-        basis_vector = basis[:,i]
-        min_val = np.amin(np.abs(basis_vector[np.nonzero(basis_vector)]))
-        rational_basis_vector = [] 
-        for entry in basis_vector:
-            rational_basis_vector.append( Fraction( entry / min_val ).limit_denominator(16) )
-
-        rational_basis.append(rational_basis_vector)
-
-    return rational_basis
-
 def _integrify_basis( basis ):
     """
     Take a vector basis with sympy.Rational in the entries,
@@ -159,21 +51,18 @@ def _integrify_basis( basis ):
     """
 
     def _gcd(a, b):
-	"""Return greatest common divisor using Euclid's Algorithm."""
-	while b:
-	    a, b = b, a % b
-	return a
+        """Return greatest common divisor using Euclid's Algorithm."""
+        while b:
+           a, b = b, a % b
+        return a
 
     def _lcm(a, b):
-	"""Return lowest common multiple."""
-	return a * b // _gcd(a, b)
+        """Return lowest common multiple."""
+        return a * b // _gcd(a, b)
 
     def _lcmm(*args):
-	"""Return lcm of args."""   
-	return reduce(_lcm, args)
-
-    #This is intended for lists of type sympy.Rational
-    assert( use_symbolic_math )
+        """Return lcm of args."""
+        return reduce(_lcm, args)
 
     new_basis = []
     for vec in basis:
@@ -208,23 +97,10 @@ def find_nondimensional_numbers( parameters ):
     # Construct the matrix of dimensions
     units, dimension_matrix = _construct_dimension_matrix( parameters )
 
-    # Sympy works better for this problem than doing it numerically,
-    # so we prefer this (use_symbolic_math is true if we successfully
-    # imported sympy)
-    if use_symbolic_math:
-        # Get the nullspace
-        nullspace = dimension_matrix.nullspace()
-        #Make all of the entries of the nullspace integers
-        integrified_nullspace = _integrify_basis( nullspace )
-        nondimensional_basis = integrified_nullspace #Rename
-    else:
-        # Get the nullspace
-        nullspace = _calculate_dimensional_nullspace( dimension_matrix )
-        # Make an attempt at making the nullspace sparser
-        sparse_nullspace = _sparsify_basis(nullspace)
-        #Make an attempt at turning the result into rational numbers
-        rational_nullspace = _rationalize_basis(sparse_nullspace)
-        nondimensional_basis = rational_nullspace # Rename
+    # Get the nullspace
+    nullspace = dimension_matrix.nullspace()
+    #Make all of the entries of the nullspace integers
+    nondimensional_basis = _integrify_basis( nullspace )
 
     # Parse the basis vectors of the nullspace into LaTeX strings
     nondimensional_numbers = NondimensionalNumberList(\

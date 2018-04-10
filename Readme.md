@@ -8,7 +8,7 @@ python setup.py install
 ```
 in the `buckinghampy` directory.
 
-The package relies on either sympy or numpy, though sympy is recommended.
+The package relies on the great sympy package.
 
 For an explanation of the motivation, background, and implementation, see
 [this article](http://ian-r-rose.github.io/automated-dimensional-analysis.html).
