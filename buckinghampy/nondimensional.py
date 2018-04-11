@@ -1,5 +1,17 @@
 """ A class representing a nondimensional number """
 
+from fractions import Fraction
+
+from typing import List, Dict
+
+class Parameter(object):
+    """
+    A lightweight class representing a parameter.
+    """
+    def __init__(self, symbol: str, units: Dict[str, int]) -> None:
+        self.units = units
+        self.symbol = symbol
+
 class NondimensionalNumber(object):
     """
     Class which represents a nondimensional number.
@@ -8,12 +20,12 @@ class NondimensionalNumber(object):
     Fraction types that represents the power of each parameter
     in the nondimensional number.
     """
-    def __init__(self, parameters, nondimensional_vector):
+    def __init__(self, parameters: List[Parameter], nondimensional_vector: List[Fraction]) -> None:
         self.parameters = parameters
         self.vector = nondimensional_vector
         self.string_representation = self._parse_nondimensional_number()
         
-    def _parse_nondimensional_number(self):
+    def _parse_nondimensional_number(self) -> str:
         """
         Takes the list of parameters and the nondimensional number
         vector, and parses it into a string that may be typeset 
@@ -67,10 +79,10 @@ class NondimensionalNumber(object):
         return parsed_number
     
     # Let IPython know how this may be typeset with LaTeX
-    def _repr_latex_(self):
+    def _repr_latex_(self) -> str:
         return '$$'+self.string_representation+'$$'
     # Return the string form of the nondimensional number
-    def __str__(self):
+    def __str__(self) -> str:
         return self.string_representation
 
 
@@ -82,7 +94,7 @@ class NondimensionalNumber(object):
 class NondimensionalNumberList(list):
     # Make a comma delimited list of the 
     # nondimensional numbers
-    def __str__(self):
+    def __str__(self) -> str:
         string_representation = ''
         for n in range(len(self)):
             s = str(self.__getitem__(n))
@@ -92,7 +104,7 @@ class NondimensionalNumberList(list):
         return string_representation
     
     #Add symbols for typesetting with LaTeX
-    def print_latex(self):
+    def print_latex(self) -> str:
         return '$$'+self.__str__()+'$$' 
 
 

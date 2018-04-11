@@ -1,9 +1,6 @@
 """ A set of common physical parameters and their SI units """
 
-class Parameter( object ):
-    def __init__(self, symbol, units):
-        self.units = units
-        self.symbol = symbol
+from .nondimensional import Parameter
 
 velocity = Parameter('u', {'m' :  1,\
                            's' : -1})
