@@ -1,6 +1,6 @@
 metadata = dict(
     name= 'buckinghampy',
-    version = 0.1,
+    version = 1.0,
     description='Educational package for dimensional analysis',
     url='https://github.com/ian-r-rose/buckinghampy',
     author='Ian Rose',
