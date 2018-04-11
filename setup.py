@@ -12,7 +12,7 @@ metadata = dict(
     python_requires = '>=3.6',
     classifiers     = [
      'Intended Audience :: Developers',
-     'Intended Audience :: Educators',
+     'Intended Audience :: Education',
      'Intended Audience :: Science/Research',
      'Programming Language :: Python',
      'Programming Language :: Python :: 3',
