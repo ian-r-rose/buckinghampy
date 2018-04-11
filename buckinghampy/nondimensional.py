@@ -1,3 +1,5 @@
+""" A class representing a nondimensional number """
+
 class NondimensionalNumber(object):
     """
     Class which represents a nondimensional number.

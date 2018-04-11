@@ -1,3 +1,5 @@
+""" A set of common physical parameters and their SI units """
+
 class Parameter( object ):
     def __init__(self, symbol, units):
         self.units = units

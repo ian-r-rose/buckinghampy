@@ -1,1 +1,3 @@
+""" buckinghampy """
+
 from .buckingham import *
